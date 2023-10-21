@@ -5,7 +5,7 @@ import interpreter.value.Value;
 public class CastExpr extends Expr {
 
     public static enum CastOp{
-        toBoolOp,
+        ToBoolOp,
         ToIntOp,
         ToFloatOp,
         ToCharOp,
@@ -24,8 +24,55 @@ public class CastExpr extends Expr {
 
     @Override
     public Value expr() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'expr'");
+        Value value = expr.expr();
+        Value ret = null;
+
+        switch(op){
+            case ToBoolOp:
+                ret = toBoolOp(value);
+                break;
+            case ToIntOp:
+                ret = toIntOp(value);
+                break;
+            case ToFloatOp:
+                ret = toFloatOp(value);
+                break;
+            case ToCharOp:
+                ret = toCharOp(value);
+                break;
+            case ToStringOp:
+                ret = toStringOP(value);
+                break;
+            default:
+                throw new InternalError("unreachable");
+        }
+        
+        return ret;
+    }
+
+    private Value toStringOP(Value value) {
+        //Tem que completar
+        return null;
+    }
+
+    private Value toCharOp(Value value) {
+        //Tem que completar
+        return null;
+    }
+
+    private Value toFloatOp(Value value) {
+        //Tem que completar
+        return null;
+    }
+
+    private Value toIntOp(Value value) {
+        //Tem que completar
+        return null;
+    }
+
+    private Value toBoolOp(Value value) {
+        //Tem que completar
+        return null;
     }
     
 }
