@@ -1,6 +1,8 @@
 package interpreter.expr;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import interpreter.type.composed.ArrayType;
 import interpreter.type.composed.DictType;
@@ -8,9 +10,9 @@ import interpreter.value.Value;
 
 public class DictExpr extends Expr{
     private DictType type;
-    private List<DicItem> items;
+    private List<DictItem> items;
 
-    protected DictExpr(int line, DictType type, List<DicItem> items) {
+    protected DictExpr(int line, DictType type, List<DictItem> items) {
         super(line);
         this.type = type;
         this.items = items;
@@ -18,8 +20,13 @@ public class DictExpr extends Expr{
 
     @Override
     public Value expr() {
-        //Tem que completar
-        throw new UnsupportedOperationException("Unimplemented method 'expr'");
+        HashMap<Value, Value> dictMap = new HashMap<>();
+        for (DictItem item : items) {
+            Value key = item.key.expr();     
+            Value value = item.value.expr(); 
+            dictMap.put(key, value);
+        }
+        //Possivelmente errado
+        return new Value(type, dictMap);
     }
-    
 }
