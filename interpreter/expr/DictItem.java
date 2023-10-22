@@ -3,6 +3,7 @@ package interpreter.expr;
 public class DictItem {
 
     public Expr key;
+    public Expr value;
     
     public DictItem(Expr key, Expr value) {
         this.key = key;
@@ -14,7 +15,6 @@ public class DictItem {
     public Expr getKey() {
         return key;
     }
-    public Expr value;
     public void setValue(Expr value) {
         this.value = value;
     }

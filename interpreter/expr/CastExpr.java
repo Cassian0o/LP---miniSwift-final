@@ -1,5 +1,17 @@
 package interpreter.expr;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import error.LanguageException;
+import interpreter.type.composed.ArrayType;
+import interpreter.type.composed.DictType;
+import interpreter.type.primitive.BoolType;
+import interpreter.type.primitive.CharType;
+import interpreter.type.primitive.FloatType;
+import interpreter.type.primitive.IntType;
 import interpreter.value.Value;
 
 public class CastExpr extends Expr {
@@ -72,7 +84,33 @@ public class CastExpr extends Expr {
 
     private Value toBoolOp(Value value) {
         //Tem que completar
-        return null;
+        BoolType boolType = BoolType.instance();
+        if (boolType.match(value.type)) {
+            return value;
+        } else if (value.type instanceof IntType) {
+            int intValue = (int) value.data;
+            boolean boolValue = intValue != 0;
+            return new Value(BoolType.instance(), boolValue);
+        } else if(value.type instanceof CharType){
+            char charValue = (char) value.data;
+            boolean boolValue = charValue != 0; 
+            return new Value(BoolType.instance(), boolValue);
+        } else if (value.type instanceof FloatType) {
+            float floatValue = (float) value.data;
+            boolean boolValue = floatValue != 0.0; 
+            return new Value(BoolType.instance(), boolValue);
+        } else if (value.type instanceof ArrayType) {
+            // List<Value> arrayValue = (List<Value>) value.data;
+            // boolean boolValue = !arrayValue.isEmpty();
+            // return new Value(BoolType.instance(), boolValue);
+            return null;
+        } else if (value.type instanceof DictType) {
+            // Map<Value, Value> dictValue = (Map<Value, Value>) value.data;
+            // boolean boolValue = !dictValue.isEmpty();
+            // return new Value(BoolType.instance(), boolValue);
+            return null;
+        } else {
+            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, value.type.toString());
+        }
     }
-    
 }
