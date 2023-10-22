@@ -126,6 +126,9 @@ public class LexicalAnalysis implements AutoCloseable {
                     } else if (c == '&') {
                         token.lexeme += (char) c;
                         state = 6;
+                    } else if (c =='|'){
+                        token.lexeme += (char) c;
+                        state = 7;
                     } else if (c == '.' || c == ',' || c == ':' || c == ';' ||
                             c == '?' || c == '+' || c == '-' || c == '*' ||
                             c == '(' || c == ')' || c == '{' || c == '}' ||

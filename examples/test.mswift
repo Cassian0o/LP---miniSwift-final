@@ -1,11 +1,5 @@
-var x : Int;
-var y : Int;
-y= 4;
-x = 0;
-if (x > 3) {
-    print("O valor de x e: ")
-    println(x);
-    } else if (x <3) {
-        println("Menor q 3");
-    }
-
+var word : String;
+word = "Castelo"
+for let c : Char in word{
+    print("sla");
+}

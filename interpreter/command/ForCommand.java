@@ -3,7 +3,6 @@ package interpreter.command;
 import error.LanguageException;
 import interpreter.expr.Expr;
 import interpreter.expr.Variable;
-import interpreter.type.primitive.BoolType;
 import interpreter.value.Value;
 
 public class ForCommand extends Command {
@@ -21,37 +20,48 @@ public class ForCommand extends Command {
 
     @Override
     public void execute() {
-        Value initialValue = expr.expr(); 
-        BoolType boolType = BoolType.instance();
-
-        if (!boolType.match(initialValue.type)) {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, initialValue.type.toString());
+        //não esta funcionando
+        Value iterable = expr.expr();
+        if (!(iterable.data instanceof Iterable<?>)) {
+            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, "Iterable expected");
         }
 
-        while (true) {
-            Value conditionValue = expr.expr(); 
-            if (!boolType.match(conditionValue.type)) {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
-            }
+        for (Object item : (Iterable<?>) iterable.data) {
+            var.setValue(new Value(var.getType(), item));
+            cmds.execute();
+        }
+    }
+    //     Value initialValue = expr.expr(); 
+    //     BoolType boolType = BoolType.instance();
 
-            boolean b = (Boolean) conditionValue.data;
-            if (!b) {
-                break; 
-            }
+    //     if (!boolType.match(initialValue.type)) {
+    //         throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, initialValue.type.toString());
+    //     }
 
-            cmds.execute(); 
+    //     while (true) {
+    //         Value conditionValue = expr.expr(); 
+    //         if (!boolType.match(conditionValue.type)) {
+    //             throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
+    //         }
+
+    //         boolean b = (Boolean) conditionValue.data;
+    //         if (!b) {
+    //             break; 
+    //         }
+
+    //         cmds.execute(); 
 
             
 
-            conditionValue = expr.expr();
-            if (!boolType.match(conditionValue.type)) {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
-            }
+    //         conditionValue = expr.expr();
+    //         if (!boolType.match(conditionValue.type)) {
+    //             throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
+    //         }
 
-            b = (Boolean) conditionValue.data;
-            if (!b) {
-                break; 
-            }
-        }
-    }
+    //         b = (Boolean) conditionValue.data;
+    //         if (!b) {
+    //             break; 
+    //         }
+    //     }
+    // }
 }

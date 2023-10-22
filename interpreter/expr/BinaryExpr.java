@@ -85,12 +85,12 @@ public class BinaryExpr extends Expr {
     }
 
     private Value andOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-            if (intType.match(lvalue.type)) {
-                if (intType.match(rvalue.type)) {
-                    int m = (Integer) lvalue.data;
-                    int n = (Integer) rvalue.data;
-                    Value v = new Value(BoolType.instance(), (m & n));
+        BoolType boolType = BoolType.instance();
+            if (boolType.match(lvalue.type)) {
+                if (boolType.match(rvalue.type)) {
+                    boolean m = (Boolean) lvalue.data;
+                    boolean n = (Boolean) rvalue.data;
+                    Value v = new Value(BoolType.instance(), (m && n));
                     return v;
                 } else {
                     throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
@@ -101,12 +101,12 @@ public class BinaryExpr extends Expr {
     }
 
     private Value orOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-            if (intType.match(lvalue.type)) {
-                if (intType.match(rvalue.type)) {
-                    int m = (Integer) lvalue.data;
-                    int n = (Integer) rvalue.data;
-                    Value v = new Value(BoolType.instance(), (m | n));
+        BoolType boolType = BoolType.instance();
+            if (boolType.match(lvalue.type)) {
+                if (boolType.match(rvalue.type)) {
+                    boolean m = (Boolean) lvalue.data;
+                    boolean n = (Boolean) rvalue.data;
+                    Value v = new Value(BoolType.instance(), (m || n));
                     return v;
                 } else {
                     throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());

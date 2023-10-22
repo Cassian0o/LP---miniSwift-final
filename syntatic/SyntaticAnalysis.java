@@ -60,7 +60,7 @@ public class SyntaticAnalysis {
     }
 
     private void advance() {
-        System.out.println("Found " + current);
+        //System.out.println("Found " + current);
         previous = current;
         current = lex.nextToken();
     }
@@ -189,7 +189,7 @@ public class SyntaticAnalysis {
     private Command procDecl() {
         Command cmd = null;
         if (check(Token.Type.VAR)) {
-            procVar();
+            cmd = procVar();
         } else if (check(Token.Type.LET)) {
             cmd = procLet();
         } else {
@@ -200,29 +200,45 @@ public class SyntaticAnalysis {
     }
 
     // <var> ::= var <name> ':' <type> [ '=' <expr> ] { ',' <name> ':' <type> [ '=' <expr> ] } [';']
-    private void procVar() {
+    private BlocksCommand procVar() {
         eat(Token.Type.VAR);
+        int bline = previous.line;
+
         Token name = procName();
         eat(Token.Type.COLON);
         Type type = procType();
 
         Variable v = this.environment.declare(name, type, false);
 
+        List<Command> cmds = new ArrayList<Command>();
+        InitializeCommand icmd = new InitializeCommand(0,null,null);
+        cmds.add(icmd);
+
         if (match(Token.Type.ASSIGN)) {
-            procExpr();
+            Expr expr = procExpr();
+            int line = previous.line;
+            icmd = new InitializeCommand(line, v, expr);
+            cmds.add(icmd);
+            
         }
 
+
         while (match(Token.Type.COMMA)) {
-            procName();
+            name =procName();
             eat(Token.Type.COLON);
-            procType();
+            type = procType();
 
             if (match(Token.Type.ASSIGN)) {
-                procExpr();
+                Expr expr = procExpr();
+                int line = previous.line;
+                icmd = new InitializeCommand(line, v, expr);
+                cmds.add(icmd);
             }
         }
 
         match(Token.Type.SEMICOLON);
+        BlocksCommand bcmd = new BlocksCommand(bline, cmds);
+        return bcmd;
     }
 
     // <let> ::= let <name> ':' <type> '=' <expr> { ',' <name> ':' <type> '=' <expr> } [';']
@@ -331,21 +347,28 @@ public class SyntaticAnalysis {
 
     // <for> ::= for ( <name> | ( var | let ) <name> ':' <type> ) in <expr> <cmd>
     private ForCommand procFor() {
+
         eat(Token.Type.FOR);
+
         int line = previous.line;
+        Token name;
+        Type type;
+        Variable v;
 
         if(match(Token.Type.VAR, Token.Type.LET)){
-            procName();
+            name = procName();
             eat(Token.Type.COLON);
-            procType();
+            type = procType();
+            v = this.environment.declare(name, type, true);
         } else{
-            procName();
+            name = procName();
+            v = this.environment.get(name);
         }
         
         eat(Token.Type.IN);
         Expr expr = procExpr();
         Command cmd = procCmd();
-        ForCommand fcmd = new ForCommand(line, null, expr, cmd);
+        ForCommand fcmd = new ForCommand(line, v, expr, cmd);
         return fcmd;
     }
 

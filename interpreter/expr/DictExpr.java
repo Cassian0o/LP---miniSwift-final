@@ -2,9 +2,7 @@ package interpreter.expr;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import interpreter.type.composed.ArrayType;
 import interpreter.type.composed.DictType;
 import interpreter.value.Value;
 
