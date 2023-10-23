@@ -5,7 +5,6 @@ import static error.LanguageException.Error.UnexpectedEOF;
 import static error.LanguageException.Error.UnexpectedLexeme;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import error.InternalException;
@@ -25,7 +24,6 @@ import interpreter.expr.ActionExpr;
 import interpreter.expr.ArrayExpr;
 import interpreter.expr.BinaryExpr;
 import interpreter.expr.CastExpr;
-import interpreter.expr.ConditionalExpr;
 import interpreter.expr.ConstExpr;
 import interpreter.expr.DictExpr;
 import interpreter.expr.DictItem;
@@ -852,7 +850,18 @@ public class SyntaticAnalysis {
     private void procFNoArgs() {
         //Tem que implementar
         if(match(Token.Type.COUNT, Token.Type.EMPTY, Token.Type.KEYS, Token.Type.VALUES)){
-            // Do nothing
+            switch (previous.type){
+                case COUNT:
+                break;
+                case EMPTY:
+                break;
+                case KEYS:
+                break;
+                case VALUES:
+                break;
+                default:
+                    throw new InternalException("Unrecheable");
+            }
         } else {
             reportError();
         }
@@ -864,7 +873,14 @@ public class SyntaticAnalysis {
     private void procFOneArg() {
         //Tem que implementar
         if(match(Token.Type.APPEND, Token.Type.CONTAINS)){
-            // Do nothing.
+             switch (previous.type){
+                case APPEND:
+                break;
+                case CONTAINS:
+                break;
+                default:
+                    throw new InternalException("Unrecheable");
+            }
        } else {
            reportError();
        }

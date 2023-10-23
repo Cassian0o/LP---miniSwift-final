@@ -1,9 +1,5 @@
 package interpreter.expr;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import error.LanguageException;
 import interpreter.type.composed.ArrayType;
@@ -132,11 +128,11 @@ public class CastExpr extends Expr {
             boolean boolValue = floatValue != 0.0; 
             return new Value(BoolType.instance(), boolValue);
         } else if (value.type instanceof ArrayType) {
-            ArrayType arrayValue = (ArrayType) value.data;
+            ArrayExpr arrayValue = (ArrayExpr) value.data;
             boolean boolValue = arrayValue != null;
              return new Value(BoolType.instance(), boolValue);
         } else if (value.type instanceof DictType) {
-            DictType dictValue = (DictType) value.data;
+            DictExpr dictValue = (DictExpr) value.data;
             boolean boolValue = dictValue != null;
             return new Value(BoolType.instance(), boolValue);
         } else {
