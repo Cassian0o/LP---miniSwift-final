@@ -10,7 +10,7 @@ public class DictExpr extends Expr{
     private DictType type;
     private List<DictItem> items;
 
-    protected DictExpr(int line, DictType type, List<DictItem> items) {
+    public DictExpr(int line, DictType type, List<DictItem> items) {
         super(line);
         this.type = type;
         this.items = items;

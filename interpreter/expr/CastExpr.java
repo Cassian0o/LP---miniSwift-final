@@ -12,6 +12,7 @@ import interpreter.type.primitive.BoolType;
 import interpreter.type.primitive.CharType;
 import interpreter.type.primitive.FloatType;
 import interpreter.type.primitive.IntType;
+import interpreter.type.primitive.StringType;
 import interpreter.value.Value;
 
 public class CastExpr extends Expr {
@@ -27,7 +28,7 @@ public class CastExpr extends Expr {
     private CastOp op;
     private Expr expr;
 
-    protected CastExpr(int line, CastOp op, Expr expr) {
+    public CastExpr(int line, CastOp op, Expr expr) {
         super(line);
         this.op = op;
         this.expr = expr;
@@ -63,23 +64,54 @@ public class CastExpr extends Expr {
     }
 
     private Value toStringOP(Value value) {
-        //Tem que completar
-        return null;
+        return new Value(StringType.instance(), value.data.toString());
     }
 
     private Value toCharOp(Value value) {
-        //Tem que completar
-        return null;
+        CharType charType = CharType.instance();
+        if (charType.match(value.type)) {
+            return value;
+        } else if(value.type instanceof IntType){
+            int intValue = (int) value.data;
+            char charValue = (char) intValue;
+            return new Value(CharType.instance(),charValue);
+        } else{
+            return new Value(charType.instance(), '\0');
+        }
     }
 
     private Value toFloatOp(Value value) {
-        //Tem que completar
-        return null;
+        FloatType floatType = FloatType.instance();
+        if (floatType.match(value.type)) {
+            return value;
+        } else if (value.type instanceof CharType) {
+            char charValue = (char) value.data;
+            float floatValue = (float) charValue;
+            return new Value(IntType.instance(), floatValue);
+        } else if (value.type instanceof IntType) {
+            int intValue = (int) value.data;
+            float floatValue = (float) intValue;
+            return new Value(IntType.instance(), floatValue);
+        } else {
+            return new Value(floatType.instance(), 0.0);
+        }
     }
 
     private Value toIntOp(Value value) {
-        //Tem que completar
-        return null;
+        IntType intType = IntType.instance();
+        if (intType.match(value.type)) {
+            return value;
+        } else if (value.type instanceof CharType) {
+            char charValue = (char) value.data;
+            int intValue = (int) charValue;
+            return new Value(IntType.instance(), intValue);
+        } else if (value.type instanceof FloatType) {
+            float floatValue = (float) value.data;
+            Integer intValue = (int) floatValue;
+            return new Value(IntType.instance(), intValue.intValue());
+        } else {
+            return new Value(intType.instance(), 0);
+        }
     }
 
     private Value toBoolOp(Value value) {
@@ -100,15 +132,13 @@ public class CastExpr extends Expr {
             boolean boolValue = floatValue != 0.0; 
             return new Value(BoolType.instance(), boolValue);
         } else if (value.type instanceof ArrayType) {
-            // List<Value> arrayValue = (List<Value>) value.data;
-            // boolean boolValue = !arrayValue.isEmpty();
-            // return new Value(BoolType.instance(), boolValue);
-            return null;
+            ArrayType arrayValue = (ArrayType) value.data;
+            boolean boolValue = arrayValue != null;
+             return new Value(BoolType.instance(), boolValue);
         } else if (value.type instanceof DictType) {
-            // Map<Value, Value> dictValue = (Map<Value, Value>) value.data;
-            // boolean boolValue = !dictValue.isEmpty();
-            // return new Value(BoolType.instance(), boolValue);
-            return null;
+            DictType dictValue = (DictType) value.data;
+            boolean boolValue = dictValue != null;
+            return new Value(BoolType.instance(), boolValue);
         } else {
             throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, value.type.toString());
         }

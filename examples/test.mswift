@@ -1,4 +1,2 @@
-let floatValue: Float = 3.14 
-let boolValue: Bool = floatValue != 0.0 
-
-print(boolValue)
+let floatValue: Array<Int> = [1, 2, 3, 4, 5]
+print(toBool(floatValue));

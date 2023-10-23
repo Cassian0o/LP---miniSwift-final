@@ -5,6 +5,7 @@ import static error.LanguageException.Error.UnexpectedEOF;
 import static error.LanguageException.Error.UnexpectedLexeme;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import error.InternalException;
@@ -21,14 +22,20 @@ import interpreter.command.InitializeCommand;
 import interpreter.command.PrintCommand;
 import interpreter.command.WhileCommand;
 import interpreter.expr.ActionExpr;
+import interpreter.expr.ArrayExpr;
 import interpreter.expr.BinaryExpr;
+import interpreter.expr.CastExpr;
 import interpreter.expr.ConstExpr;
+import interpreter.expr.DictExpr;
+import interpreter.expr.DictItem;
 import interpreter.expr.Expr;
 import interpreter.expr.SetExpr;
 import interpreter.expr.UnaryExpr;
 import interpreter.expr.Variable;
 import interpreter.type.Type;
+import interpreter.type.composed.ArrayType;
 import interpreter.type.composed.ComposedType;
+import interpreter.type.composed.DictType;
 import interpreter.type.primitive.BoolType;
 import interpreter.type.primitive.CharType;
 import interpreter.type.primitive.FloatType;
@@ -211,8 +218,8 @@ public class SyntaticAnalysis {
         Variable v = this.environment.declare(name, type, false);
 
         List<Command> cmds = new ArrayList<Command>();
-        InitializeCommand icmd = new InitializeCommand(0,null,null);
-        cmds.add(icmd);
+        InitializeCommand icmd;// = new InitializeCommand(0,null,null);
+        //cmds.add(icmd);
 
         if (match(Token.Type.ASSIGN)) {
             Expr expr = procExpr();
@@ -433,10 +440,15 @@ public class SyntaticAnalysis {
 
     // <composed> ::= <arraytype> | <dicttype>
     private ComposedType procComposed() {
-        if (check(Token.Type.ARRAY)) {
-            procArrayType();
-        } else if (check(Token.Type.DICT)) {
-            procDictType();
+         if (match(Token.Type.ARRAY, Token.Type.DICT)) {
+            switch (previous.type) {
+                case ARRAY:
+                    return procArrayType();
+                case DICT:
+                    return procDictType();
+                default:
+                    reportError();
+            }
         } else {
             reportError();
         }
@@ -445,21 +457,23 @@ public class SyntaticAnalysis {
     }
 
     // <arraytype> ::= Array '<' <type> '>'
-    private void procArrayType() {
+    private ArrayType procArrayType() {
         eat(Token.Type.ARRAY);
         eat(Token.Type.LOWER_THAN);
-        procType();
+        Type type = procType();
         eat(Token.Type.GREATER_THAN);
+        return ArrayType.instance(type);
     }
 
     // <dicttype> ::= Dict '<' <type> ',' <type> '>'
-    private void procDictType() {
+    private DictType procDictType() {
         eat(Token.Type.DICT);
         eat(Token.Type.LOWER_THAN);
-        procType();
+        Type type = procType();
         eat(Token.Type.COMMA);
-        procType();
+        Type type2 = procType();
         eat(Token.Type.GREATER_THAN);
+        return DictType.instance(type, type2);
     }
 
     // <expr> ::= <cond> [ '?' <expr> ':' <expr> ]
@@ -624,11 +638,11 @@ public class SyntaticAnalysis {
             expr = procAction();
         } else if (check(Token.Type.TO_BOOL, Token.Type.TO_INT,
                 Token.Type.TO_FLOAT, Token.Type.TO_CHAR, Token.Type.TO_STRING)) {
-            procCast();
+             expr = procCast();
         } else if (check(Token.Type.ARRAY)) {
-            procArray();
+            expr = procArray();
         } else if (check(Token.Type.DICT)) {
-            procDict();
+            expr = procDict();
         } else if (check(Token.Type.NAME)) {
             expr = procLValue();
         } else {
@@ -708,45 +722,79 @@ public class SyntaticAnalysis {
     }
 
     // <cast> ::= ( toBool | toInt | toFloat | toChar | toString ) '(' <expr> ')'
-    private void procCast() {
+    private CastExpr procCast() {
+        CastExpr.CastOp op = null;
         if(match(Token.Type.TO_BOOL, Token.Type.TO_INT, Token.Type.TO_FLOAT, Token.Type.TO_CHAR, Token.Type.TO_STRING)){
-            // Do nothing.
+            switch (previous.type){
+                case TO_BOOL:
+                op = CastExpr.CastOp.ToBoolOp;
+                break;
+                case TO_INT:
+                op = CastExpr.CastOp.ToIntOp;
+                break;
+                case TO_FLOAT:
+                op = CastExpr.CastOp.ToFloatOp;
+                break;
+                case TO_CHAR:
+                op = CastExpr.CastOp.ToCharOp;
+                break;
+                case TO_STRING:
+                op = CastExpr.CastOp.ToStringOp;
+                break;
+                default:
+                    throw new InternalException("Unrecheable");
+            }
         } else {
             reportError();
         }
+        int line = previous.line;
         eat(Token.Type.OPEN_PAR);
-        procExpr();
+        Expr expr = procExpr();
         eat(Token.Type.CLOSE_PAR);
+        CastExpr cexpr = new CastExpr(line, op, expr);
+        return cexpr;
     }
 
     // <array> ::= <arraytype> '(' [ <expr> { ',' <expr> } ] ')'
-    private void procArray() {
-        procArrayType();
+    private ArrayExpr procArray() {
+        ArrayType type = procArrayType();
+        List<Expr> expr = new ArrayList<Expr>();
+        Expr carry;
         eat(Token.Type.OPEN_PAR);
         if (!check(Token.Type.CLOSE_PAR)) {
-            procExpr();
+            carry = procExpr();
+            expr.add(carry);
             while (match(Token.Type.COMMA)) {
-                procExpr();
+                carry = procExpr();
+                expr.add(carry);
             }
         }
         eat(Token.Type.CLOSE_PAR);
+        ArrayExpr arexpr = new ArrayExpr(current.line, type, expr);
+        return arexpr;
     }
 
     // <dict> ::= <dictype> '(' [ <expr> ':' <expr> { ',' <expr> ':' <expr> } ] ')'
-    private void procDict() {
-        procDictType();
+    private DictExpr procDict() {
+        DictType type = procDictType();
+        List<DictItem> expr = new ArrayList<DictItem>();
+        DictItem carry = new DictItem(null, null);
         eat(Token.Type.OPEN_PAR);
         if(!check(Token.Type.CLOSE_PAR)){
-            procExpr();
+            carry.key = procExpr();
+            expr.add(carry);
             eat(Token.Type.COLON);
-            procExpr();
+            carry.value = procExpr();
             while (match(Token.Type.COMMA)){
-                procExpr();
+                carry.key = procExpr();
                 eat(Token.Type.COLON);
-                procExpr();
+                carry.value = procExpr();
+                expr.add(carry);
             }
         }
         eat(Token.Type.CLOSE_PAR);
+        DictExpr dexpr = new DictExpr(current.line, type,expr);
+        return dexpr;
     }
 
     // <lvalue> ::= <name> { '[' <expr> ']' }
