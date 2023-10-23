@@ -22,7 +22,7 @@ public class FunctionExpr extends Expr {
     private Expr expr;
     private Expr arg;
 
-    protected FunctionExpr(int line, FunctionOp op, Expr expr, Expr arg) {
+    public FunctionExpr(int line, FunctionOp op, Expr expr, Expr arg) {
         super(line);
         this.op = op;
         this.expr = expr;

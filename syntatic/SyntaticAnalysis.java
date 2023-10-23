@@ -28,9 +28,11 @@ import interpreter.expr.ConstExpr;
 import interpreter.expr.DictExpr;
 import interpreter.expr.DictItem;
 import interpreter.expr.Expr;
+import interpreter.expr.FunctionExpr;
 import interpreter.expr.SetExpr;
 import interpreter.expr.UnaryExpr;
 import interpreter.expr.Variable;
+import interpreter.expr.FunctionExpr.FunctionOp;
 import interpreter.type.Type;
 import interpreter.type.composed.ArrayType;
 import interpreter.type.composed.ComposedType;
@@ -439,8 +441,8 @@ public class SyntaticAnalysis {
 
     // <composed> ::= <arraytype> | <dicttype>
     private ComposedType procComposed() {
-         if (match(Token.Type.ARRAY, Token.Type.DICT)) {
-            switch (previous.type) {
+         if (check(Token.Type.ARRAY, Token.Type.DICT)) {
+            switch (current.type) {
                 case ARRAY:
                     return procArrayType();
                 case DICT:
@@ -779,6 +781,7 @@ public class SyntaticAnalysis {
 
     // <array> ::= <arraytype> '(' [ <expr> { ',' <expr> } ] ')'
     private ArrayExpr procArray() {
+        //tem q corrigir
         ArrayType type = procArrayType();
         List<Expr> expr = new ArrayList<Expr>();
         Expr carry;
@@ -798,6 +801,7 @@ public class SyntaticAnalysis {
 
     // <dict> ::= <dictype> '(' [ <expr> ':' <expr> { ',' <expr> ':' <expr> } ] ')'
     private DictExpr procDict() {
+        //tem q corrigir
         DictType type = procDictType();
         List<DictItem> expr = new ArrayList<DictItem>();
         DictItem carry = new DictItem(null, null);
@@ -834,30 +838,39 @@ public class SyntaticAnalysis {
     }
 
     // <function> ::= { '.' ( <fnoargs> | <fonearg> ) }
-    private void procFunction() {
+    private FunctionExpr procFunction() {
         //Tem que implementar
+        FunctionExpr fexpr = null;
         while(match(Token.Type.DOT)){
             if(check(Token.Type.COUNT, Token.Type.EMPTY,Token.Type.KEYS,Token.Type.VALUES)){
-                procFNoArgs();
+                fexpr = procFNoArgs();
             } else{
-                procFOneArg();
+                fexpr = procFOneArg();
             }
-
-            }
+        }
+        if (fexpr == null){
+            reportError();
+        }
+        return fexpr;
     }
 
     // <fnoargs> ::= ( count | empty | keys | values ) '(' ')'
-    private void procFNoArgs() {
+    private FunctionExpr procFNoArgs() {
         //Tem que implementar
+        FunctionExpr.FunctionOp op = null;
         if(match(Token.Type.COUNT, Token.Type.EMPTY, Token.Type.KEYS, Token.Type.VALUES)){
             switch (previous.type){
                 case COUNT:
+                op = FunctionExpr.FunctionOp.Count;
                 break;
                 case EMPTY:
+                op = FunctionExpr.FunctionOp.Empty;
                 break;
                 case KEYS:
+                op = FunctionExpr.FunctionOp.Keys;
                 break;
                 case VALUES:
+                op = FunctionExpr.FunctionOp.Values;
                 break;
                 default:
                     throw new InternalException("Unrecheable");
@@ -865,18 +878,24 @@ public class SyntaticAnalysis {
         } else {
             reportError();
         }
+        int line = previous.line;
         eat(Token.Type.OPEN_PAR);
         eat(Token.Type.CLOSE_PAR);
+        FunctionExpr fexpr = new FunctionExpr(line, op, null,null);
+        return fexpr;
     }
 
     // <fonearg> ::= ( append | contains ) '(' <expr> ')'
-    private void procFOneArg() {
+    private FunctionExpr procFOneArg() {
         //Tem que implementar
+        FunctionExpr.FunctionOp op = null;
         if(match(Token.Type.APPEND, Token.Type.CONTAINS)){
              switch (previous.type){
                 case APPEND:
+                op = FunctionExpr.FunctionOp.Append;
                 break;
                 case CONTAINS:
+                op = FunctionExpr.FunctionOp.Contains;
                 break;
                 default:
                     throw new InternalException("Unrecheable");
@@ -884,9 +903,12 @@ public class SyntaticAnalysis {
        } else {
            reportError();
        }
+       int line = previous.line;
        eat(Token.Type.OPEN_PAR);
-       procExpr();
+       Expr expr = procExpr();
        eat(Token.Type.CLOSE_PAR);
+       FunctionExpr fexpr = new FunctionExpr(line, op, expr,null);
+       return fexpr;
     }
 
     private Token procName() {
