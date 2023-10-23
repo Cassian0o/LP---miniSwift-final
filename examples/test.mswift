@@ -1,2 +1,0 @@
-let floatValue: Array<Int> = [1, 2, 3, 4, 5]
-print(toBool(floatValue));

@@ -25,6 +25,7 @@ import interpreter.expr.ActionExpr;
 import interpreter.expr.ArrayExpr;
 import interpreter.expr.BinaryExpr;
 import interpreter.expr.CastExpr;
+import interpreter.expr.ConditionalExpr;
 import interpreter.expr.ConstExpr;
 import interpreter.expr.DictExpr;
 import interpreter.expr.DictItem;
@@ -354,7 +355,7 @@ public class SyntaticAnalysis {
 
     // <for> ::= for ( <name> | ( var | let ) <name> ':' <type> ) in <expr> <cmd>
     private ForCommand procFor() {
-
+        //Tem que implementar corretamente
         eat(Token.Type.FOR);
 
         int line = previous.line;
@@ -481,9 +482,9 @@ public class SyntaticAnalysis {
         Expr expr = procCond();
 
         if (match(Token.Type.TERNARY)) {
-            procExpr();
+            expr = procExpr();
             eat(Token.Type.COLON);
-            procExpr();
+            expr = procExpr();
         }
 
         return expr;
@@ -491,6 +492,29 @@ public class SyntaticAnalysis {
 
     // <cond> ::= <rel> { ( '&&' | '||' ) <rel> }
     private Expr procCond() {
+        // Corrigir possivel implementacao.
+        // Expr left = procRel();
+        // Expr cond = new BinaryExpr(0, null, null, null);
+        // while (match(Token.Type.AND, Token.Type.OR)) {
+        //     int line = previous.line;
+        //     Expr right;
+        //     BinaryExpr.Op op;
+        //      switch (previous.type) {
+        //         case AND:
+        //             op = BinaryExpr.Op.And;
+        //             break;
+        //         case OR:
+        //             op = BinaryExpr.Op.Or;
+        //             break;
+        //         default:
+        //             throw new InternalError("Unreachable");
+        //     }
+            
+        //     right = procRel();
+        //     cond = new BinaryExpr(line, left, op, right);
+        // }
+        // ConditionalExpr cexpr = new ConditionalExpr(current.line, cond, left, left);
+        // return cexpr;
         Expr left = procRel();
         while (match(Token.Type.AND, Token.Type.OR)) {
             int line = previous.line;
@@ -813,6 +837,7 @@ public class SyntaticAnalysis {
 
     // <function> ::= { '.' ( <fnoargs> | <fonearg> ) }
     private void procFunction() {
+        //Tem que implementar
         while(match(Token.Type.DOT)){
             if(check(Token.Type.COUNT, Token.Type.EMPTY,Token.Type.KEYS,Token.Type.VALUES)){
                 procFNoArgs();
@@ -825,6 +850,7 @@ public class SyntaticAnalysis {
 
     // <fnoargs> ::= ( count | empty | keys | values ) '(' ')'
     private void procFNoArgs() {
+        //Tem que implementar
         if(match(Token.Type.COUNT, Token.Type.EMPTY, Token.Type.KEYS, Token.Type.VALUES)){
             // Do nothing
         } else {
@@ -836,6 +862,7 @@ public class SyntaticAnalysis {
 
     // <fonearg> ::= ( append | contains ) '(' <expr> ')'
     private void procFOneArg() {
+        //Tem que implementar
         if(match(Token.Type.APPEND, Token.Type.CONTAINS)){
             // Do nothing.
        } else {
