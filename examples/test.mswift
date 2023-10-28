@@ -1,0 +1,4 @@
+let a: Char = 'b'
+if (a == 'b'){
+    println("certissimo");
+}

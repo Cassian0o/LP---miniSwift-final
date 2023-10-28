@@ -1,8 +1,11 @@
 package interpreter.command;
 
+import java.util.List;
+
 import error.LanguageException;
 import interpreter.expr.Expr;
 import interpreter.expr.Variable;
+import interpreter.type.Type.Category;
 import interpreter.value.Value;
 
 public class ForCommand extends Command {
@@ -20,48 +23,25 @@ public class ForCommand extends Command {
 
     @Override
     public void execute() {
-        //não esta funcionando
-        Value iterable = expr.expr();
-        if (!(iterable.data instanceof Iterable<?>)) {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, "Iterable expected");
+        Value array = expr.expr();
+        List<?> list;
+        char[] string;
+        if (array.type.getCategory() == Category.Array) {
+            list = (List<?>) array.data;
+            for (Object iterable : list) {
+                var.setValue(new Value(var.getType(), iterable));
+                cmds.execute();
+            }
+        } else if (array.type.getCategory() == Category.String && (var.getType().getCategory() == Category.Char)) {
+            string = ((String) array.data).toCharArray();
+            for (char ch : string) {
+                var.setValue(new Value(var.getType(), ch));
+                cmds.execute();
+            }
+        } else {
+            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType,
+                    array.type.toString());
         }
 
-        for (Object item : (Iterable<?>) iterable.data) {
-            var.setValue(new Value(var.getType(), item));
-            cmds.execute();
-        }
     }
-    //     Value initialValue = expr.expr(); 
-    //     BoolType boolType = BoolType.instance();
-
-    //     if (!boolType.match(initialValue.type)) {
-    //         throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, initialValue.type.toString());
-    //     }
-
-    //     while (true) {
-    //         Value conditionValue = expr.expr(); 
-    //         if (!boolType.match(conditionValue.type)) {
-    //             throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
-    //         }
-
-    //         boolean b = (Boolean) conditionValue.data;
-    //         if (!b) {
-    //             break; 
-    //         }
-
-    //         cmds.execute(); 
-
-            
-
-    //         conditionValue = expr.expr();
-    //         if (!boolType.match(conditionValue.type)) {
-    //             throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
-    //         }
-
-    //         b = (Boolean) conditionValue.data;
-    //         if (!b) {
-    //             break; 
-    //         }
-    //     }
-    // }
 }

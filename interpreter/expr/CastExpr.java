@@ -111,7 +111,6 @@ public class CastExpr extends Expr {
     }
 
     private Value toBoolOp(Value value) {
-        //Tem que completar
         BoolType boolType = BoolType.instance();
         if (boolType.match(value.type)) {
             return value;
