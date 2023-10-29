@@ -362,9 +362,9 @@ public class SyntaticAnalysis {
         int line = previous.line;
         Token name;
         Type type;
-        Variable v;
+        Variable var;
 
-        if(check(Token.Type.VAR, Token.Type.LET)){
+        if(match(Token.Type.VAR, Token.Type.LET)){
             name = procName();
             eat(Token.Type.COLON);
             type = procType();
@@ -376,8 +376,8 @@ public class SyntaticAnalysis {
         eat(Token.Type.IN);
         Expr expr = procExpr();
         Command cmd = procCmd();
-        v = environment.get(name);
-        ForCommand fcmd = new ForCommand(line, v, expr, cmd);
+        var = environment.get(name);
+        ForCommand fcmd = new ForCommand(line, var, expr, cmd);
         return fcmd;
     }
 
