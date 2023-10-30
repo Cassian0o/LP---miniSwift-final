@@ -32,8 +32,6 @@ public class AccessExpr extends SetExpr {
 
             List<DictItem> listDictItems = (List<DictItem>) value.data;
             for(DictItem item : listDictItems){
-                System.out.println("Key: " + item.getKey().expr().data.toString());
-                System.out.println("Value: " + item.getValue().expr().data.toString());
                 if(item.getKey().expr().data == index.expr().data){
                     Type typeValue = item.getValue().expr().type;
                     return new Value(typeValue, item.getValue().expr());

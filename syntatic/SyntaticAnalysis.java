@@ -33,7 +33,6 @@ import interpreter.expr.FunctionExpr;
 import interpreter.expr.SetExpr;
 import interpreter.expr.UnaryExpr;
 import interpreter.expr.Variable;
-import interpreter.expr.FunctionExpr.FunctionOp;
 import interpreter.type.Type;
 import interpreter.type.composed.ArrayType;
 import interpreter.type.composed.ComposedType;
