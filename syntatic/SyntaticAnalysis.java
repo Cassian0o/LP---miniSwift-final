@@ -625,9 +625,9 @@ public class SyntaticAnalysis {
             expr = procRValue();
         }
 
-        procFunction();
+        Expr expr1 = procFunction(expr);
 
-        return expr;
+        return expr1;
     }
 
     // <rvalue> ::= <const> | <action> | <cast> | <array> | <dict> | <lvalue>
@@ -820,13 +820,13 @@ public class SyntaticAnalysis {
     }
 
     // <function> ::= { '.' ( <fnoargs> | <fonearg> ) }
-    private FunctionExpr procFunction() {
+    private FunctionExpr procFunction(Expr expr) {
         FunctionExpr fexpr = null;
         while(match(Token.Type.DOT)){
             if(check(Token.Type.COUNT, Token.Type.EMPTY,Token.Type.KEYS,Token.Type.VALUES)){
-                fexpr = new FunctionExpr(current.line,null, fexpr,procFNoArgs(fexpr));
+                fexpr = new FunctionExpr(current.line,null, expr,procFNoArgs(expr));
             } else if (check(Token.Type.APPEND, Token.Type.CONTAINS)){
-                fexpr = new FunctionExpr(current.line,null, fexpr,procFOneArg(fexpr));
+                fexpr = new FunctionExpr(current.line,null, expr,procFOneArg(expr));
             }
         }
         return fexpr;
