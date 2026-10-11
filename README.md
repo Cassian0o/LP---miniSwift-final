@@ -18,7 +18,6 @@ O miniSwift possui sintaxe própria e um subconjunto de recursos de Swift. Arqui
 - [Correções realizadas](#correções-realizadas)
 - [Limitações](#limitações)
 - [Solução de problemas](#solução-de-problemas)
-- [Contribuição e licença](#contribuição-e-licença)
 
 ## Requisitos
 
@@ -400,9 +399,3 @@ O lexer entrega tokens ao parser. O parser resolve nomes no ambiente léxico e c
 | `Fim de arquivo inesperado` | Confira aspas, comentários, delimitadores e a quantidade de linhas fornecidas a `read()`. |
 | O anagrama continua perguntando | Digite um candidato que não seja anagrama; candidatos válidos mantêm o laço. |
 | Um teste de novo exemplo falha por falta de fixture | Adicione a saída esperada `.out` e, se necessário, a entrada `.in`. |
-
-## Contribuição e licença
-
-Para corrigir ou adicionar um recurso, inclua um caso em `tests/TestSuite.java`, atualize esta referência e execute a suíte completa antes de enviar o pull request. Não versione `build/`, arquivos `.class` ou JARs gerados.
-
-O repositório não contém uma licença de distribuição definida. A autoria original foi preservada; uma licença deve ser escolhida pelo autor antes de oferecer permissões de reutilização.
