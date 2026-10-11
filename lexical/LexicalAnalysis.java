@@ -1,7 +1,9 @@
 package lexical;
 
 import java.io.InputStream;
-import java.io.PushbackInputStream;
+import java.io.PushbackReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +17,7 @@ import interpreter.value.Value;
 public class LexicalAnalysis implements AutoCloseable {
 
     private int line;
-    private PushbackInputStream input;
+    private PushbackReader input;
     private static Map<String, Token.Type> keywords;
 
     static {
@@ -86,266 +88,141 @@ public class LexicalAnalysis implements AutoCloseable {
     }
 
     public LexicalAnalysis(InputStream is) {
-        input = new PushbackInputStream(is);
+        input = new PushbackReader(new InputStreamReader(is, StandardCharsets.UTF_8), 2);
         line = 1;
     }
 
     public void close() {
-        try {
-            input.close();
-        } catch (Exception e) {
-            throw new InternalException("Unable to close file");
-        }
+        try { input.close(); }
+        catch (java.io.IOException e) { throw new InternalException("Unable to close file: " + e.getMessage()); }
     }
 
-    public int getLine() {
-        return this.line;
-    }
+    public int getLine() { return line; }
 
     public Token nextToken() {
-        Token token = new Token("", Token.Type.END_OF_FILE, null);
+        int c;
+        int start;
+        for (;;) {
+            c = getc();
+            if (Character.isWhitespace(c)) continue;
+            start = line;
+            if (c != '/') break;
+            int next = getc();
+            if (next == '/') {
+                while ((c = getc()) != -1 && c != '\n') { }
+                continue;
+            }
+            if (next == '*') {
+                int previous = 0;
+                while ((c = getc()) != -1 && !(previous == '*' && c == '/')) previous = c;
+                if (c == -1) return token("/*", Token.Type.UNEXPECTED_EOF, null, start);
+                continue;
+            }
+            ungetc(next);
+            return token("/", Token.Type.DIV, null, start);
+        }
 
-        int state = 1;
-        while (state != 14 && state != 15) {
-            int c = getc();
-            // System.out.printf("  [%02d, %03d ('%c')]\n",
-            //     state, c, (char) c);
+        if (c == -1) return token("", Token.Type.END_OF_FILE, null, start);
+        StringBuilder text = new StringBuilder();
+        text.append((char) c);
+        if (c == '_' || Character.isLetter(c)) {
+            while ((c = getc()) == '_' || Character.isLetterOrDigit(c)) text.append((char) c);
+            ungetc(c);
+            String name = text.toString();
+            return token(name, keywords.getOrDefault(name, Token.Type.NAME), null, start);
+        }
 
-            switch (state) {
-                case 1:
-                    if (c == ' ' || c == '\t' || c == '\r') {
-                        state = 1;
-                    } else if (c == '\n') {
-                        state = 1;
-                        line++;
-                    } else if (c == '/') {
-                        state = 2;
-                    } else if (c == '=' || c == '!' || c == '<' || c == '>') {
-                        token.lexeme += (char) c;
-                        state = 5;
-                    } else if (c == '&') {
-                        token.lexeme += (char) c;
-                        state = 6;
-                    } else if (c =='|'){
-                        token.lexeme += (char) c;
-                        state = 7;
-                    } else if (c == '.' || c == ',' || c == ':' || c == ';' ||
-                            c == '?' || c == '+' || c == '-' || c == '*' ||
-                            c == '(' || c == ')' || c == '{' || c == '}' ||
-                            c == '[' || c == ']') {
-                        token.lexeme += (char) c;
-                        state = 14;
-                    } else if (c == '_' ||
-                               Character.isLetter(c)) {
-                        token.lexeme += (char) c;
-                        state = 8;
-                    } else if (Character.isDigit(c)) {
-                        token.lexeme += (char) c;
-                        state = 9;
-                    } else if (c == '\'') {
-                        state = 11;
-                    } else if (c == '\"'){
-                        state = 13; 
-                    } else if (c == -1) {
-                        token.type = Token.Type.END_OF_FILE;
-                        state = 15;
-                    } else {
-                        token.lexeme += (char) c;
-                        token.type = Token.Type.INVALID_TOKEN;
-                        state = 15;
-                    }
-
-                    break;
-                case 2:
-                    if (c == '*') {
-                        state = 3;
-                    } else {
-                        ungetc(c);
-                        token.lexeme = "/";
-                        state = 14;
-                    }
-                    break;
-                case 3:
-                    if (c == '*') {
-                        state = 4;
-                    } else {
-                        state = 3;
-                    }
-                    break;
-                case 4:
-                    if (c != '*' && c != '/') {
-                        state = 3;
-                    } else if (c == '*') {
-                        state = 4;
-                    }
-                    if (c == '/') {
-                        state = 1;
-                    }
-                    break;
-                case 5:
-                    if (c == '=') {
-                        token.lexeme += (char) c;
-                        state = 14;
-                    } else {
-                        ungetc(c);
-                        state = 14;
-                    }
-
-                    break;
-                case 6:
-                    if (c == '&') {
-                        token.lexeme += (char) c;
-                        state = 14;
-                    } else {
-                        ungetc(c);
-                        state = 15;
-                        token.type = Token.Type.INVALID_TOKEN;
-                    }
-    
-                    break;
-                case 7:
-                    if (c == '|') {
-                        token.lexeme += (char) c;
-                        state = 14;
-                    } else {
-                        ungetc(c);
-                        state = 15;
-                        token.type = Token.Type.INVALID_TOKEN;
-                    }                
-                    break;
-                case 8:
-                    if (c == '_' ||
-                            Character.isLetter(c) ||
-                            Character.isDigit(c)) {
-                        token.lexeme += (char) c;
-                        state = 8;
-                    } else {
-                        ungetc(c);
-                        state = 14;
-                    }
-
-                    break;
-                case 9:
-                    if (Character.isDigit(c)) {
-                        token.lexeme += (char) c;
-                        state = 9;
-                    } else if (c == '.') {
-                        token.lexeme += (char) c;
-                        state = 10;
-                    } else {
-                        ungetc(c);
-                        token.type = Token.Type.INTEGER_LITERAL;
-                        token.literal = new Value(IntType.instance(), toInt(token.lexeme));
-                        state = 15;
-                    }
-
-                    break;
-                case 10:
-                    if (Character.isDigit(c)) {
-                        token.lexeme += (char) c;
-                        state = 10;
-                    } else {
-                        ungetc(c);
-                        token.type = Token.Type.FLOAT_LITERAL;
-                        token.literal = new Value(FloatType.instance(), toFloat(token.lexeme));
-                        state = 15;
-                    }
-                    break;
-                case 11:
-                    if (c != '\'') {
-                        if (c == -1) {
-                            token.type = Token.Type.UNEXPECTED_EOF;
-                            state = 15;
-                        } else {
-                            if (c == '\n')
-                                line++;
-            
-                            token.lexeme += (char) c;
-                            state = 12;
-                        }
-                    } else {
-                        token.lexeme += (char) c;
-                        token.type = Token.Type.INVALID_TOKEN;
-                        state = 15;
-                    }
-
-                    break;
-                case 12:
-                    if (c == -1) {
-                        token.type = Token.Type.UNEXPECTED_EOF;
-                        state = 15;
-                    } else if (c == '\'') {
-                        token.type = Token.Type.CHAR_LITERAL;
-                        token.literal = new Value(CharType.instance(), token.lexeme.charAt(0));
-                        state = 15;
-                    } else {
-                        token.type = Token.Type.INVALID_TOKEN;
-                        state = 15;
-                    }
-
-                    break;
-                case 13:
-                    if (c == -1) {
-                        token.type = Token.Type.UNEXPECTED_EOF;
-                        state = 15;
-                    } else if (c != '\"') {
-                        token.lexeme += (char) c;
-                        state = 13;
-                    } else if (c == '\"') {
-                        token.type = Token.Type.STRING_LITERAL;
-                        token.literal = new Value(StringType.instance(), token.lexeme.toString());
-                        state = 15;
-                    } else{
-                        token.type = Token.Type.INVALID_TOKEN;
-                        state = 15;
-                    }
-                    break;
-                default:
-                    throw new InternalException("Unreachable");
+        if (Character.isDigit(c)) {
+            while (Character.isDigit(c = getc())) text.append((char) c);
+            boolean floating = false;
+            if (c == '.') {
+                int next = getc();
+                if (Character.isDigit(next)) {
+                    floating = true;
+                    text.append('.').append((char) next);
+                    while (Character.isDigit(c = getc())) text.append((char) c);
+                } else {
+                    ungetc(next);
+                }
+            }
+            ungetc(c);
+            String number = text.toString();
+            try {
+                if (floating) {
+                    float value = Float.parseFloat(number);
+                    if (!Float.isFinite(value)) throw new NumberFormatException();
+                    return token(number, Token.Type.FLOAT_LITERAL, new Value(FloatType.instance(), value), start);
+                }
+                return token(number, Token.Type.INTEGER_LITERAL, new Value(IntType.instance(), Integer.parseInt(number)), start);
+            } catch (NumberFormatException e) {
+                return token(number, Token.Type.INVALID_TOKEN, null, start);
             }
         }
 
-        if (state == 14)
-            token.type = keywords.containsKey(token.lexeme) ?
-                keywords.get(token.lexeme) : Token.Type.NAME;
+        if (c == '\'' || c == '"') return quoted(c, start);
+        if (c == '=' || c == '!' || c == '<' || c == '>') {
+            int next = getc();
+            if (next == '=') text.append('=');
+            else ungetc(next);
+        } else if (c == '&' || c == '|') {
+            int next = getc();
+            if (next == c) text.append((char) next);
+            else ungetc(next);
+        }
+        String symbol = text.toString();
+        return token(symbol, keywords.getOrDefault(symbol, Token.Type.INVALID_TOKEN), null, start);
+    }
 
-        token.line = this.line;
+    private Token quoted(int quote, int start) {
+        StringBuilder text = new StringBuilder();
+        int c;
+        while ((c = getc()) != quote) {
+            if (c == -1) return token(text.toString(), Token.Type.UNEXPECTED_EOF, null, start);
+            if (c == '\\') {
+                c = getc();
+                switch (c) {
+                    case -1: return token(text.toString(), Token.Type.UNEXPECTED_EOF, null, start);
+                    case 'n': c = '\n'; break;
+                    case 'r': c = '\r'; break;
+                    case 't': c = '\t'; break;
+                    case '0': c = '\0'; break;
+                    case '\\': case '\'': case '"': break;
+                    default: return token("\\" + (char) c, Token.Type.INVALID_TOKEN, null, start);
+                }
+            }
+            text.append((char) c);
+        }
+        String literal = text.toString();
+        if (quote == '"')
+            return token(literal, Token.Type.STRING_LITERAL, new Value(StringType.instance(), literal), start);
+        if (literal.length() == 1)
+            return token(literal, Token.Type.CHAR_LITERAL, new Value(CharType.instance(), literal.charAt(0)), start);
+        return token(literal, Token.Type.INVALID_TOKEN, null, start);
+    }
 
+    private Token token(String lexeme, Token.Type type, Value literal, int start) {
+        Token token = new Token(lexeme, type, literal);
+        token.line = start;
         return token;
     }
 
     private int getc() {
         try {
-            return input.read();
-        } catch (Exception e) {
-            throw new InternalException("Unable to read file");
+            int c = input.read();
+            if (c == '\n') line++;
+            return c;
+        } catch (java.io.IOException e) {
+            throw new InternalException("Unable to read file: " + e.getMessage());
         }
     }
 
     private void ungetc(int c) {
-        if (c != -1) {
-            try {
-                input.unread(c);
-            } catch (Exception e) {
-                throw new InternalException("Unable to ungetc");
-            }
-        }
-    }
-
-    private int toInt(String lexeme) {
+        if (c == -1) return;
         try {
-            return Integer.parseInt(lexeme);
-        } catch (Exception e) {
-            return 0;
+            input.unread(c);
+            if (c == '\n') line--;
+        } catch (java.io.IOException e) {
+            throw new InternalException("Unable to unread character: " + e.getMessage());
         }
     }
-
-    private float toFloat(String lexeme) {
-        try {
-            return Float.parseFloat(lexeme);
-        } catch (Exception e) {
-            return 0.0f;
-        }
-    }
-
 }

@@ -27,7 +27,7 @@ public class ArrayType extends ComposedType {
 
     @Override
     public int hashCode() {
-        return super.hashCode() * 17 + this.innerType.hashCode();
+        return 17 * getCategory().hashCode() + this.innerType.hashCode();
     }
 
     @Override

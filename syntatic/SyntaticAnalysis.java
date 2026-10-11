@@ -10,7 +10,6 @@ import java.util.List;
 import error.InternalException;
 import error.LanguageException;
 import interpreter.Environment;
-import interpreter.Interpreter;
 import interpreter.command.AssignCommand;
 import interpreter.command.BlocksCommand;
 import interpreter.command.Command;
@@ -26,6 +25,7 @@ import interpreter.expr.ArrayExpr;
 import interpreter.expr.BinaryExpr;
 import interpreter.expr.CastExpr;
 import interpreter.expr.ConstExpr;
+import interpreter.expr.ConditionalExpr;
 import interpreter.expr.DictExpr;
 import interpreter.expr.DictItem;
 import interpreter.expr.Expr;
@@ -55,10 +55,14 @@ public class SyntaticAnalysis {
     private Environment environment;
 
     public SyntaticAnalysis(LexicalAnalysis lex) {
+        this(lex, new Environment());
+    }
+
+    public SyntaticAnalysis(LexicalAnalysis lex, Environment environment) {
         this.lex = lex;
         this.current = lex.nextToken();
         this.previous = null;
-        this.environment = Interpreter.globals;
+        this.environment = environment;
     }
 
     public Command process() {
@@ -77,7 +81,6 @@ public class SyntaticAnalysis {
         if (type == current.type) {
             advance();
         } else {
-            System.out.println("Expected (..., " + type + ", ..., ...), found " + current);
             reportError();
         }
     }
@@ -219,15 +222,15 @@ public class SyntaticAnalysis {
         Variable v = this.environment.declare(name, type, false);
 
         List<Command> cmds = new ArrayList<Command>();
-        InitializeCommand icmd;// = new InitializeCommand(0,null,null);
-        //cmds.add(icmd);
+        InitializeCommand icmd;
 
         if (match(Token.Type.ASSIGN)) {
             Expr expr = procExpr();
             int line = previous.line;
             icmd = new InitializeCommand(line, v, expr);
             cmds.add(icmd);
-            
+        } else {
+            cmds.add(new InitializeCommand(name.line, v, null));
         }
 
 
@@ -235,12 +238,15 @@ public class SyntaticAnalysis {
             name =procName();
             eat(Token.Type.COLON);
             type = procType();
+            v = this.environment.declare(name, type, false);
 
             if (match(Token.Type.ASSIGN)) {
                 Expr expr = procExpr();
                 int line = previous.line;
                 icmd = new InitializeCommand(line, v, expr);
                 cmds.add(icmd);
+            } else {
+                cmds.add(new InitializeCommand(name.line, v, null));
             }
         }
 
@@ -355,29 +361,28 @@ public class SyntaticAnalysis {
 
     // <for> ::= for ( <name> | ( var | let ) <name> ':' <type> ) in <expr> <cmd>
     private ForCommand procFor() {
-        //Tem que implementar corretamente
         eat(Token.Type.FOR);
-
         int line = previous.line;
-        Token name;
-        Type type;
-        Variable var;
-
-        if(match(Token.Type.VAR, Token.Type.LET)){
-            name = procName();
+        boolean declared = match(Token.Type.VAR, Token.Type.LET);
+        boolean constant = declared && previous.type == Token.Type.LET;
+        Token name = procName();
+        Type type = null;
+        if (declared) {
             eat(Token.Type.COLON);
             type = procType();
-            environment.declare(name, type, true);
-        } else{
-            name = procName();
         }
-        
         eat(Token.Type.IN);
         Expr expr = procExpr();
-        Command cmd = procCmd();
-        var = environment.get(name);
-        ForCommand fcmd = new ForCommand(line, var, expr, cmd);
-        return fcmd;
+        Environment old = environment;
+        if (declared)
+            environment = new Environment(old);
+        try {
+            Variable var = declared ? environment.declare(name, type, constant) : environment.get(name);
+            Command cmd = procCmd();
+            return new ForCommand(line, var, expr, cmd, declared);
+        } finally {
+            environment = old;
+        }
     }
 
     // <assign> ::= [ <expr> '=' ] <expr> [ ';' ]
@@ -482,34 +487,31 @@ public class SyntaticAnalysis {
         Expr expr = procCond();
 
         if (match(Token.Type.TERNARY)) {
-            procExpr();
+            int line = previous.line;
+            Expr trueExpr = procExpr();
             eat(Token.Type.COLON);
-            procExpr();
+            Expr falseExpr = procExpr();
+            expr = new ConditionalExpr(line, expr, trueExpr, falseExpr);
         }
 
         return expr;
     }
 
-    // <cond> ::= <rel> { ( '&&' | '||' ) <rel> }
+    // OR has lower precedence than AND.
     private Expr procCond() {
-        Expr left = procRel();
-        while (match(Token.Type.AND, Token.Type.OR)) {
+        Expr left = procAnd();
+        while (match(Token.Type.OR)) {
             int line = previous.line;
-            BinaryExpr.Op op = null;
-            Expr right = null;
-             switch (previous.type) {
-                case AND:
-                    op = BinaryExpr.Op.And;
-                    break;
-                case OR:
-                    op = BinaryExpr.Op.Or;
-                    break;
-                default:
-                    throw new InternalError("Unreachable");
-            }
-            
-            right = procRel();
-            left = new BinaryExpr(line, left, op, right);
+            left = new BinaryExpr(line, left, BinaryExpr.Op.Or, procAnd());
+        }
+        return left;
+    }
+
+    private Expr procAnd() {
+        Expr left = procRel();
+        while (match(Token.Type.AND)) {
+            int line = previous.line;
+            left = new BinaryExpr(line, left, BinaryExpr.Op.And, procRel());
         }
 
         return left;
@@ -606,7 +608,7 @@ public class SyntaticAnalysis {
             line = previous.line;
         }
 
-        Expr expr = procFactor();
+        Expr expr = op == null ? procFactor() : procPrefix();
 
         if (op != null)
             expr = new UnaryExpr(line, expr, op);
@@ -624,9 +626,7 @@ public class SyntaticAnalysis {
             expr = procRValue();
         }
 
-        Expr expr1 = procFunction(expr);
-
-        return expr1;
+        return procFunction(expr);
     }
 
     // <rvalue> ::= <const> | <action> | <cast> | <array> | <dict> | <lvalue>
@@ -780,19 +780,14 @@ public class SyntaticAnalysis {
     private DictExpr procDict() {
         DictType type = procDictType();
         List<DictItem> expr = new ArrayList<DictItem>();
-        DictItem carry = new DictItem(null, null);
         eat(Token.Type.OPEN_PAR);
         if(!check(Token.Type.CLOSE_PAR)){
-            carry.key = procExpr();
-            expr.add(carry);
-            eat(Token.Type.COLON);
-            carry.value = procExpr();
-            while (match(Token.Type.COMMA)){
-                carry.key = procExpr();
+            do {
+                Expr key = procExpr();
                 eat(Token.Type.COLON);
-                carry.value = procExpr();
-                expr.add(carry);
-            }
+                Expr value = procExpr();
+                expr.add(new DictItem(key, value));
+            } while (match(Token.Type.COMMA));
         }
         eat(Token.Type.CLOSE_PAR);
         DictExpr dexpr = new DictExpr(current.line, type,expr);
@@ -803,37 +798,32 @@ public class SyntaticAnalysis {
     private SetExpr procLValue() {
         Token name = procName();
         SetExpr sexpr = this.environment.get(name);
-        Expr expr = null;
-        AccessExpr aexpr = null;
-
-        if(check(Token.Type.OPEN_BRA)){
-            while (match(Token.Type.OPEN_BRA)) {
-                expr = procExpr();
-                eat(Token.Type.CLOSE_BRA);
-            }
-            aexpr = new AccessExpr(current.line, sexpr, expr);
-            return aexpr;
+        while (match(Token.Type.OPEN_BRA)) {
+            int line = previous.line;
+            Expr index = procExpr();
+            eat(Token.Type.CLOSE_BRA);
+            sexpr = new AccessExpr(line, sexpr, index);
         }
 
         return sexpr;
     }
 
     // <function> ::= { '.' ( <fnoargs> | <fonearg> ) }
-    private FunctionExpr procFunction(Expr expr) {
-        FunctionExpr fexpr = null;
+    private Expr procFunction(Expr expr) {
         while(match(Token.Type.DOT)){
             if(check(Token.Type.COUNT, Token.Type.EMPTY,Token.Type.KEYS,Token.Type.VALUES)){
-                fexpr = new FunctionExpr(current.line,null, expr,procFNoArgs(expr));
+                expr = procFNoArgs(expr);
             } else if (check(Token.Type.APPEND, Token.Type.CONTAINS)){
-                fexpr = new FunctionExpr(current.line,null, expr,procFOneArg(expr));
+                expr = procFOneArg(expr);
+            } else {
+                reportError();
             }
         }
-        return fexpr;
+        return expr;
     }
 
     // <fnoargs> ::= ( count | empty | keys | values ) '(' ')'
     private FunctionExpr procFNoArgs(Expr expr) {
-        //Tem que implementar
         FunctionExpr.FunctionOp op = null;
         if(match(Token.Type.COUNT, Token.Type.EMPTY, Token.Type.KEYS, Token.Type.VALUES)){
             switch (previous.type){

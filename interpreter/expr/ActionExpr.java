@@ -1,23 +1,16 @@
 package interpreter.expr;
 
-import java.util.Scanner;
 import java.util.Random;
-
-import error.InternalException;
+import error.LanguageException;
+import interpreter.Interpreter;
 import interpreter.type.primitive.FloatType;
 import interpreter.type.primitive.StringType;
 import interpreter.value.Value;
 
 public class ActionExpr extends Expr {
-    
-    public static enum Op {
-        Read,
-        Random
-    }
-
-    private static Scanner in = new Scanner(System.in);
-
-    private Op op;
+    public enum Op { Read, Random }
+    private static final Random random = new Random();
+    private final Op op;
 
     public ActionExpr(int line, Op op) {
         super(line);
@@ -28,15 +21,14 @@ public class ActionExpr extends Expr {
     public Value expr() {
         switch (op) {
             case Read:
-                return new Value(StringType.instance(), in.nextLine().trim());
+                String line = Interpreter.readLine();
+                if (line == null)
+                    throw LanguageException.instance(getLine(), LanguageException.Error.UnexpectedEOF);
+                return new Value(StringType.instance(), line);
             case Random:
-                Random random = new Random();
-                float randomFloat = random.nextFloat();
-                return new Value(FloatType.instance(), randomFloat);
-                //throw new InternalException("Implement me!");
+                return new Value(FloatType.instance(), random.nextFloat());
             default:
-                throw new InternalException("Unreachable");
+                throw new IllegalStateException("Unknown action: " + op);
         }
     }
-
 }

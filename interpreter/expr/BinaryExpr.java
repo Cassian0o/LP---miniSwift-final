@@ -1,33 +1,19 @@
 package interpreter.expr;
 
 import error.LanguageException;
+import interpreter.type.Type.Category;
 import interpreter.type.primitive.BoolType;
-import interpreter.type.primitive.CharType;
-import interpreter.type.primitive.FloatType;
-import interpreter.type.primitive.IntType;
 import interpreter.value.Value;
 
 public class BinaryExpr extends Expr {
-
-    public static enum Op {
-        And,
-        Or,
-        Equal,
-        NotEqual,
-        LowerThan,
-        LowerEqual,
-        GreaterThan,
-        GreaterEqual,
-        Add,
-        Sub,
-        Mul,
-        Div
+    public enum Op {
+        And, Or, Equal, NotEqual, LowerThan, LowerEqual, GreaterThan, GreaterEqual, Add, Sub, Mul, Div
     }
 
-    private Expr left;
-    private Op op;
-    private Expr right;
-    
+    private final Expr left;
+    private final Op op;
+    private final Expr right;
+
     public BinaryExpr(int line, Expr left, Op op, Expr right) {
         super(line);
         this.left = left;
@@ -37,420 +23,81 @@ public class BinaryExpr extends Expr {
 
     @Override
     public Value expr() {
-        Value lvalue = left.expr();
-        Value rvalue = right.expr();
-
-        Value ret = null;
-        switch (op) {
-            case And:
-                ret = andOp(lvalue, rvalue);
-                break;
-            case Or:
-                ret = orOp(lvalue, rvalue);
-                break;
-            case Equal:
-                ret = equalOp(lvalue, rvalue);
-                break;
-            case NotEqual:
-                ret = notEqualOp(lvalue, rvalue);
-                break;
-            case LowerThan:
-                ret = lowerThanOp(lvalue, rvalue);
-                break;
-            case LowerEqual:
-                ret = lowerEqualOp(lvalue, rvalue);
-                break;
-            case GreaterThan:
-                ret = greaterThanOp(lvalue, rvalue);
-                break;
-            case GreaterEqual:
-                ret = greaterEqualOp(lvalue, rvalue);
-                break;
-            case Add:
-                ret = addOp(lvalue, rvalue);
-                break;
-            case Sub:
-                ret = subOp(lvalue, rvalue);
-                break;
-            case Mul:
-                ret = mulOp(lvalue, rvalue);
-                break;
-            case Div:
-                ret = divOp(lvalue, rvalue);
-                break;
-            default:
-                throw new InternalError("unreachable");
+        Value a = left.expr();
+        if (op == Op.And || op == Op.Or) {
+            requireBool(a);
+            boolean condition = (Boolean) a.data;
+            if ((op == Op.And && !condition) || (op == Op.Or && condition))
+                return bool(condition);
+            Value b = right.expr();
+            requireBool(b);
+            return b;
         }
 
-        return ret;
-    }
-
-    private Value andOp(Value lvalue, Value rvalue) {
-        BoolType boolType = BoolType.instance();
-            if (boolType.match(lvalue.type)) {
-                if (boolType.match(rvalue.type)) {
-                    boolean m = (Boolean) lvalue.data;
-                    boolean n = (Boolean) rvalue.data;
-                    Value v = new Value(BoolType.instance(), (m && n));
-                    return v;
-                } else {
-                    throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-                }
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-            }
-    }
-
-    private Value orOp(Value lvalue, Value rvalue) {
-        BoolType boolType = BoolType.instance();
-            if (boolType.match(lvalue.type)) {
-                if (boolType.match(rvalue.type)) {
-                    boolean m = (Boolean) lvalue.data;
-                    boolean n = (Boolean) rvalue.data;
-                    Value v = new Value(BoolType.instance(), (m || n));
-                    return v;
-                } else {
-                    throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-                }
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-            }
-    }
-
-    private Value equalOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m == n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m == n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m == n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
+        Value b = right.expr();
+        if (!a.type.match(b.type))
+            throw LanguageException.instance(getLine(), LanguageException.Error.InvalidType, b.type.toString());
+        Category category = a.type.getCategory();
+        if (op == Op.Equal || op == Op.NotEqual) {
+            boolean equal = category == Category.Float ? (float) a.data == (float) b.data : a.equals(b);
+            return bool(op == Op.Equal ? equal : !equal);
         }
-    }
 
-    private Value notEqualOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m != n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
+        if (op == Op.LowerThan || op == Op.LowerEqual || op == Op.GreaterThan || op == Op.GreaterEqual) {
+            if (category != Category.Int && category != Category.Float && category != Category.Char && category != Category.String)
+                throw invalidOperation();
+            int comparison = compare(a, b);
+            switch (op) {
+                case LowerThan: return bool(comparison < 0);
+                case LowerEqual: return bool(comparison <= 0);
+                case GreaterThan: return bool(comparison > 0);
+                case GreaterEqual: return bool(comparison >= 0);
+                default: throw new IllegalStateException();
             }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m != n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m != n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
         }
-    }
 
-    private Value lowerThanOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m < n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
+        if (category == Category.String && op == Op.Add)
+            return new Value(a.type, (String) a.data + (String) b.data);
+        if (category == Category.Int) {
+            int x = (Integer) a.data, y = (Integer) b.data;
+            switch (op) {
+                case Add: return new Value(a.type, x + y);
+                case Sub: return new Value(a.type, x - y);
+                case Mul: return new Value(a.type, x * y);
+                case Div:
+                    if (y == 0) throw invalidOperation();
+                    return new Value(a.type, x / y);
+                default: throw invalidOperation();
             }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m <n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m < n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
         }
-    }
-
-    private Value lowerEqualOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m <= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
+        if (category == Category.Float) {
+            float x = (Float) a.data, y = (Float) b.data;
+            switch (op) {
+                case Add: return new Value(a.type, x + y);
+                case Sub: return new Value(a.type, x - y);
+                case Mul: return new Value(a.type, x * y);
+                case Div:
+                    if (y == 0.0f) throw invalidOperation();
+                    return new Value(a.type, x / y);
+                default: throw invalidOperation();
             }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m <= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m <= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
         }
+        throw invalidOperation();
     }
 
-    private Value greaterThanOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m > n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m > n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m > n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
+    @SuppressWarnings("unchecked")
+    private int compare(Value a, Value b) {
+        return ((Comparable<Object>) a.data).compareTo(b.data);
     }
 
-    private Value greaterEqualOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        CharType charType = CharType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(BoolType.instance(), (m >= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m >= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        }else if (charType.match(lvalue.type)) {
-            if (charType.match(rvalue.type)) {
-                char m = (char) lvalue.data;
-                char n = (char) rvalue.data;
-
-                Value v = new Value(BoolType.instance(), (m >= n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
+    private void requireBool(Value value) {
+        if (!BoolType.instance().match(value.type))
+            throw LanguageException.instance(getLine(), LanguageException.Error.InvalidType, value.type.toString());
     }
 
-    private Value addOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(intType, (m + n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
+    private Value bool(boolean value) { return new Value(BoolType.instance(), value); }
 
-                Value v = new Value(floatType, (m + n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
+    private LanguageException invalidOperation() {
+        return LanguageException.instance(getLine(), LanguageException.Error.InvalidOperation);
     }
-
-    private Value subOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(intType, (m - n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(floatType, (m - n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
-    }
-
-    private Value mulOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(intType, (m * n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(floatType, (m * n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
-    }
-
-    private Value divOp(Value lvalue, Value rvalue) {
-        IntType intType = IntType.instance();
-        FloatType floatType = FloatType.instance();
-        if (intType.match(lvalue.type)) {
-            if (intType.match(rvalue.type)) {
-                int m = (Integer) lvalue.data;
-                int n = (Integer) rvalue.data;
-                Value v = new Value(intType, (m / n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else if (floatType.match(lvalue.type)) {
-            if (floatType.match(rvalue.type)) {
-                float m = (Float) lvalue.data;
-                float n = (Float) rvalue.data;
-
-                Value v = new Value(floatType, (m / n));
-                return v;
-            } else {
-                throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, rvalue.type.toString());
-            }
-        } else {
-            throw LanguageException.instance(super.getLine(), LanguageException.Error.InvalidType, lvalue.type.toString());
-        }
-    }
-
 }

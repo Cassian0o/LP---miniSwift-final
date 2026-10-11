@@ -1,0 +1,9 @@
+* text=auto
+*.java text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.mswift text eol=lf
+*.in text eol=lf
+*.out text eol=lf
+tests/fixtures/*.out whitespace=-blank-at-eol

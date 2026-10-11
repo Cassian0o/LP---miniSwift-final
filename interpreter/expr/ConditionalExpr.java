@@ -1,6 +1,8 @@
 package interpreter.expr;
 
 import interpreter.value.Value;
+import error.LanguageException;
+import interpreter.type.primitive.BoolType;
 
 public class ConditionalExpr extends Expr {
     private Expr cond;
@@ -19,6 +21,8 @@ public class ConditionalExpr extends Expr {
     @Override
     public Value expr() {
         Value conditionValue = cond.expr();
+        if (!BoolType.instance().match(conditionValue.type))
+            throw LanguageException.instance(getLine(), LanguageException.Error.InvalidType, conditionValue.type.toString());
 
     if ((boolean) conditionValue.data) {
         return trueExpr.expr();

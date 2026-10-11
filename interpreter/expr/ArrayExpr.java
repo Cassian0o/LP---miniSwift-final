@@ -5,6 +5,7 @@ import java.util.List;
 
 import interpreter.type.composed.ArrayType;
 import interpreter.value.Value;
+import error.LanguageException;
 
 public class ArrayExpr extends Expr {
     private ArrayType type;
@@ -22,6 +23,8 @@ public class ArrayExpr extends Expr {
 
     for (Expr item : items) {
         Value itemValue = item.expr();
+        if (!type.getInnerType().match(itemValue.type))
+            throw LanguageException.instance(getLine(), LanguageException.Error.InvalidType, itemValue.type.toString());
         elementValues.add(itemValue);
     }
 

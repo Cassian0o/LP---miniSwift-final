@@ -1,10 +1,11 @@
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import error.LanguageException;
+import interpreter.Environment;
 import interpreter.Interpreter;
 import interpreter.command.Command;
 import lexical.LexicalAnalysis;
@@ -12,64 +13,66 @@ import syntatic.SyntaticAnalysis;
 
 public class msi {
     public static void main(String[] args) {
+        int status = 0;
         try {
-            switch (args.length) {
-                case 0:
-                    runPrompt();
-                    break;
-                case 1:
-                    runFile(args[0]);
-                    break;
-                default:
-                    System.out.println("Usage: java msi [miniSwift file]");
-                    break;
+            System.setOut(new PrintStream(System.out, true, "UTF-8"));
+            System.setErr(new PrintStream(System.err, true, "UTF-8"));
+            if (args.length == 1 && (args[0].equals("--help") || args[0].equals("-h"))) {
+                usage();
+            } else if (args.length == 0) {
+                runPrompt();
+            } else if (args.length == 1) {
+                runFile(args[0]);
+            } else {
+                usage();
+                status = 2;
             }
-        } catch (Exception e) {
-            System.err.println("Internal error: " + e.getMessage());
-            e.printStackTrace();
+        } catch (LanguageException e) {
+            System.err.println(e.getMessage());
+            status = 1;
+        } catch (IOException e) {
+            System.err.println("Erro de arquivo: " + e.getMessage());
+            status = 1;
+        } catch (RuntimeException e) {
+            System.err.println("Erro interno: " + e.getMessage());
+            e.printStackTrace(System.err);
+            status = 2;
         }
+        if (status != 0) System.exit(status);
     }
 
-    private static void runPrompt() throws Exception {
-        InputStreamReader input = new InputStreamReader(System.in);
-        BufferedReader reader = new BufferedReader(input);
+    private static void usage() {
+        System.out.println("Uso: java -cp build/classes msi [arquivo.mswift]");
+        System.out.println("Sem arquivo: prompt interativo; --help: exibe esta ajuda.");
+    }
+
+    private static void runPrompt() {
+        Environment environment = new Environment();
         for (;;) {
             System.out.print("> ");
-            String line = reader.readLine();
+            System.out.flush();
+            String line = Interpreter.readLine();
             if (line == null) {
                 System.out.println();
-                break;
+                return;
             }
-
-            run(new ByteArrayInputStream(line.getBytes()));
+            Environment candidate = environment.copy();
+            try (LexicalAnalysis lex = new LexicalAnalysis(
+                    new ByteArrayInputStream(line.getBytes(StandardCharsets.UTF_8)))) {
+                Command cmd = new SyntaticAnalysis(lex, candidate).process();
+                environment = candidate;
+                Interpreter.interpret(cmd);
+            } catch (LanguageException e) {
+                System.err.println(e.getMessage());
+            }
         }
     }
 
-    private static void runFile(String filename) throws Exception {
-        run(new FileInputStream(filename));
-    }
-
-    private static void run(InputStream is) {
-        try (LexicalAnalysis l = new LexicalAnalysis(is)) {
-            // O código a seguir é usado apenas para testar o analisador léxico.
-            // TODO: depois de pronto, comentar o código abaixo.
-            // Token lex;
-            // do {
-            //     lex = l.nextToken();
-            //     System.out.printf("%02d: (\"%s\", %s, %s)\n", lex.line,
-            //         lex.lexeme, lex.type, lex.literal);
-            // } while (lex.type != END_OF_FILE &&
-            //          lex.type != INVALID_TOKEN &&
-            //          lex.type != UNEXPECTED_EOF);
-
-            // O código a seguir é dado para testar o interpretador.
-            // TODO: descomentar depois que o analisador léxico estiver OK.
-            SyntaticAnalysis s = new SyntaticAnalysis(l);
-            Command cmd = s.process();
+    private static void runFile(String filename) throws IOException {
+        try (InputStream input = new FileInputStream(filename);
+             LexicalAnalysis lex = new LexicalAnalysis(input)) {
+            Command cmd = new SyntaticAnalysis(lex).process();
             Interpreter.interpret(cmd);
-        } catch (LanguageException e) {
-            System.out.println(e.getMessage());
         }
     }
-
 }

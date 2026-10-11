@@ -35,7 +35,7 @@ public class DictType extends ComposedType {
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = super.hashCode();
+        int result = getCategory().hashCode();
         result = prime * result + keyType.hashCode();
         result = prime * result + valueType.hashCode();
         return result;

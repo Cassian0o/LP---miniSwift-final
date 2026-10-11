@@ -24,6 +24,12 @@ public class Environment {
         this.enclosing = enclosing;
     }
 
+    public Environment copy() {
+        Environment copy = new Environment(enclosing);
+        copy.memory.putAll(memory);
+        return copy;
+    }
+
     public Variable declare(Token name, Type type, boolean constant) {
         if (memory.containsKey(name.lexeme))
             throw LanguageException.instance(name.line, AlreadyDeclaredVariable, name.lexeme);

@@ -12,11 +12,11 @@ public abstract class ComposedType extends Type {
     public static ComposedType instance(Type.Category classification, Type ... innerTypes) {
         switch (classification) {
             case Array:
-                assert innerTypes.length == 1;
-                return ArrayType.instance(classification, innerTypes[0]);
+                if (innerTypes.length != 1) throw new TypeException();
+                return ArrayType.instance(innerTypes[0]);
             case Dict:
-                assert innerTypes.length == 2;
-                return DictType.instance(classification, innerTypes[0], innerTypes[1]);
+                if (innerTypes.length != 2) throw new TypeException();
+                return DictType.instance(innerTypes[0], innerTypes[1]);
             default:
                 throw new TypeException();
         }

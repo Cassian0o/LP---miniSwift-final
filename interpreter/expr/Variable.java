@@ -41,6 +41,10 @@ public class Variable extends SetExpr {
         this.write(value, true);
     }
 
+    public void reset() {
+        this.value = null;
+    }
+
     public Value expr() {
         if (this.value == null)
             throw LanguageException.instance(super.getLine(), UnitializedVariable, name);

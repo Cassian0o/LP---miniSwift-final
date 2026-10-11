@@ -43,6 +43,19 @@ public class Value {
     }
 
     @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof Value)) return false;
+        Value value = (Value) other;
+        return type.match(value.type) && data.equals(value.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * type.hashCode() + data.hashCode();
+    }
+
+    @Override
     public String toString() {
         return new StringBuffer()
             .append(type)
